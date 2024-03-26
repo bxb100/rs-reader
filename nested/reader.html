@@ -24,17 +24,7 @@
         font: menu;
         font-family: system-ui, sans-serif;
     }
-    #drop-target {
-        height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        visibility: hidden;
-    }
-    #drop-target h1 {
-        font-weight: 900;
-    }
+
     #file-button {
         font: inherit;
         background: none;
@@ -250,17 +240,33 @@
         fill: Canvas;
         filter: drop-shadow(0 1px 0 rgba(0, 0, 0, .2));
     }
+
+    .loader {
+        margin: auto;
+        top: 45%;
+        position: relative;
+        border: 5px solid #f3f3f3;
+        border-radius: 50%;
+        border-top: 5px solid #555;
+        width: 50px;
+        height: 50px;
+        -webkit-animation: spin 2s linear infinite; /* Safari */
+        animation: spin 2s linear infinite;
+    }
+
+    /* Safari */
+    @-webkit-keyframes spin {
+        0% { -webkit-transform: rotate(0deg); }
+        100% { -webkit-transform: rotate(360deg); }
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
 </style>
+
 <input type="file" id="file-input" hidden>
-<div id="drop-target" class="filter">
-    <div>
-        <svg class="icon empty-state-icon" width="72" height="72" aria-hidden="true">
-            <path d="M36 18s-6-6-12-6-15 6-15 6v42s9-6 15-6 12 6 12 6c4-4 8-6 12-6s12 2 15 6V18c-6-4-12-6-15-6-4 0-8 2-12 6m0 0v42"/>
-        </svg>
-        <h1>Drop a book here!</h1>
-        <p>Or <button id="file-button">choose a file</button> to open it.</p>
-    </div>
-</div>
 <div id="dimming-overlay" aria-hidden="true"></div>
 <div id="side-bar">
     <div id="side-bar-header">
@@ -279,7 +285,7 @@
         </svg>
     </button>
     <div id="menu-button" class="menu-container">
-        <button aria-label="Show settings" aria-haspopup="true">
+        <button aria-label="Show settings" aria-haspopup="true" hidden>
             <svg class="icon" width="24" height="24" aria-hidden="true">
                 <path d="M5 12.7a7 7 0 0 1 0-1.4l-1.8-2 2-3.5 2.7.5a7 7 0 0 1 1.2-.7L10 3h4l.9 2.6 1.2.7 2.7-.5 2 3.4-1.8 2a7 7 0 0 1 0 1.5l1.8 2-2 3.5-2.7-.5a7 7 0 0 1-1.2.7L14 21h-4l-.9-2.6a7 7 0 0 1-1.2-.7l-2.7.5-2-3.4 1.8-2Z"/>
                 <circle cx="12" cy="12" r="3"/>
@@ -301,7 +307,7 @@
         </svg>
     </button>
 </div>
-
-<script type="module" src="/foliate-js/vendor/pdfjs/pdf.js"></script>
-<script type="module" src="/foliate-js/vendor/pdfjs/pdf.worker.js"></script>
+<div class="loader" id="loader"></div>
+<script type="module" src="../foliate-js/vendor/pdfjs/pdf.js"></script>
+<script type="module" src="../foliate-js/vendor/pdfjs/pdf.worker.js"></script>
 <script src="reader.js" type="module"></script>

@@ -3,7 +3,8 @@
     "beforeDevCommand": "pnpm dev",
     "beforeBuildCommand": "pnpm build",
     "devPath": "http://localhost:1420",
-    "distDir": "../dist"
+    "distDir": "../dist",
+    "withGlobalTauri": true
   },
   "package": {
     "productName": "rs-reader",
@@ -15,6 +16,14 @@
       "shell": {
         "all": false,
         "open": true
+      },
+      "fs": {
+        "scope": ["$TEMP/**", "$APPCONFIG/**", "$APPDATA/**", "$DOWNLOAD/**"],
+        "all": true,
+        "readFile": true
+      },
+      "dialog": {
+        "all": true
       }
     },
     "windows": [
