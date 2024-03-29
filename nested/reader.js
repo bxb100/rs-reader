@@ -328,32 +328,10 @@ const open = async file => {
     await reader.open(file)
 }
 
-const b64toBlob = (b64Data, contentType = '', sliceSize = 512) => {
-    const byteCharacters = atob(b64Data);
-    const byteArrays = [];
+const {url, name} = window.__DATA__
 
-    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
-        const slice = byteCharacters.slice(offset, offset + sliceSize);
-
-        const byteNumbers = new Array(slice.length);
-        for (let i = 0; i < slice.length; i++) {
-            byteNumbers[i] = slice.charCodeAt(i);
-        }
-
-        const byteArray = new Uint8Array(byteNumbers);
-        byteArrays.push(byteArray);
-    }
-
-    return new Blob(byteArrays, {type: contentType});
-}
-
-const {invoke} = window.__TAURI__
-
-const {path, name, scheme, options} = window.__DATA__
-invoke('reade_file', {path, name, scheme, options})
-    .then(data => b64toBlob(data))
+fetch(url)
+    .then(res => res.blob())
     .then(blob => open(new File([blob], name)))
-    .catch(error => {
-        console.error(error)
-    })
+    .catch(e => console.error(e))
     .finally(() => $("#loader").remove())

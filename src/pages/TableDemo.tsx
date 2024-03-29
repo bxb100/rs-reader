@@ -28,7 +28,7 @@ import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "@/
 import {FileEntry} from "@/type.ts";
 import _ from "lodash";
 import {useToast} from "@/components/ui/use-toast.ts";
-import {checkFile, deleteFile, listFiles, openReader} from "@/components/api/reader.ts";
+import {checkFile, deleteFile, listFiles, openReader, useOptions, useScheme} from "@/components/api/reader.ts";
 import {useUpload} from "@/components/hooks/useUpload.tsx";
 
 export const columns: (setRefresh: React.Dispatch<boolean>) => ColumnDef<FileEntry>[] = (setRefresh) => [
@@ -51,7 +51,6 @@ export const columns: (setRefresh: React.Dispatch<boolean>) => ColumnDef<FileEnt
             )
         }
     },
-
     {
         accessorKey: "root",
         header: "Root Path",
@@ -66,7 +65,6 @@ export const columns: (setRefresh: React.Dispatch<boolean>) => ColumnDef<FileEnt
         cell: ({row}) => {
             const fileEntry = row.original
             const {toast} = useToast();
-            console.log(fileEntry)
 
             return (
                 <DropdownMenu>
@@ -85,7 +83,7 @@ export const columns: (setRefresh: React.Dispatch<boolean>) => ColumnDef<FileEnt
                         </DropdownMenuItem>
                         <DropdownMenuSeparator/>
                         <DropdownMenuItem onClick={async () => {
-                            checkFile(fileEntry)
+                            checkFile(fileEntry, useOptions)
                                 .then(bool => {
                                     if (bool) {
                                         openReader(fileEntry)
@@ -99,7 +97,7 @@ export const columns: (setRefresh: React.Dispatch<boolean>) => ColumnDef<FileEnt
 
                         }}>View</DropdownMenuItem>
                         <DropdownMenuItem onClick={async () => {
-                            await deleteFile(fileEntry).then(() => {
+                            await deleteFile(fileEntry, useOptions).then(() => {
                                 toast({
                                     title: "Success",
                                     description: "File deleted",
@@ -119,6 +117,7 @@ export const columns: (setRefresh: React.Dispatch<boolean>) => ColumnDef<FileEnt
     },
 ]
 
+
 export function DataTableDemo() {
     const [sorting, setSorting] = useState<SortingState>([])
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(
@@ -127,7 +126,7 @@ export function DataTableDemo() {
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
     const [rowSelection, setRowSelection] = useState({})
 
-    const [path, setPath] = useState<string>(__ROOT_PATH + "/");
+    const [path, setPath] = useState<string>("");
     const [data, setData] = useState<FileEntry[]>([])
     const [refresh, setRefresh] = useState<boolean>(false)
     const {uploadDialog, status, setStatus} = useUpload();
@@ -157,6 +156,7 @@ export function DataTableDemo() {
                 setStatus(null)
             }
 
+            return () => setStatus(null)
         }
     }, [status])
 
@@ -172,7 +172,7 @@ export function DataTableDemo() {
     const search = useCallback(
         _.debounce((path) => {
             console.log(path)
-            listFiles("fs", path)
+            listFiles(useScheme, path, useOptions)
                 .then((files: any) => {
                     console.log(files as FileEntry[])
                     setData(files as FileEntry[])
@@ -189,7 +189,12 @@ export function DataTableDemo() {
     )
 
     useEffect(() => {
-        search(path)
+        if (useScheme === 'fs') {
+            setPath("file/")
+            search("file/")
+        } else {
+            search(path)
+        }
     }, [])
 
     const table = useReactTable({

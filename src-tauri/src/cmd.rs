@@ -41,7 +41,7 @@ pub fn open_reader(pass: String) -> Result<(), String> {
     .focused(true)
     .skip_taskbar(true)
     // .min_inner_size(820f64, 500f64)
-    .initialization_script(&format!("window.__DATA__ = {pass}"))
+    .initialization_script(&format!("window.__DATA__ = JSON.parse(`{pass}`)"))
     .build()
     .unwrap();
 
@@ -109,8 +109,8 @@ pub fn write_file(
     options: Option<HashMap<String, String>>,
 ) -> Result<String, String> {
     info!(
-        "write_file: read_path: {}, save_path: {}, scheme: {:?}",
-        read_path, save_path, scheme
+        "write_file: read_path: {}, save_path: {}, scheme: {:?}, options: {:?}",
+        read_path, save_path, scheme, options
     );
 
     let uuid = Uuid::new_v4();
@@ -126,7 +126,7 @@ pub fn write_file(
         let local_file_path = Path::new(&read_path);
         let bytes = fs::read(local_file_path).unwrap();
 
-        let operator = init_operator(scheme.clone(), options).unwrap();
+        let operator = init_operator(scheme.clone(), options).unwrap().blocking();
 
         let default_fs_separate = "/";
         #[cfg(target_os = "windows")]
@@ -143,7 +143,13 @@ pub fn write_file(
             separate,
             local_file_path.file_name().unwrap().to_str().unwrap()
         );
-        let result = operator.blocking().write(&save_path, bytes);
+        let local_save_path = Path::new(&save_path);
+        let cs = local_save_path.parent().unwrap();
+        if !operator.is_exist(cs.to_str().unwrap()).map_err(|e| e.to_string()).unwrap() {
+            operator.create_dir(cs.join("/").to_str().unwrap()).map_err(|e| e.to_string()).unwrap();
+        }
+        
+        let result = operator.write(&save_path, bytes);
         {
             info!("write_file: result: {:?}", result);
             let mut cache = CACHE.lock().unwrap();

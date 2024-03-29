@@ -5,10 +5,6 @@ import * as path from "node:path";
 // https://vitejs.dev/config/
 export default defineConfig({
     plugins: [react()],
-    define: {
-        // for test usage
-        __ROOT_PATH: JSON.stringify(path.resolve(__dirname, 'test'))
-    },
     resolve: {
         alias: {
             // https://github.com/vitejs/vite/issues/15412

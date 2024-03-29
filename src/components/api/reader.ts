@@ -1,12 +1,14 @@
-import {BookInfo, FileEntry, Scheme} from "@/type.ts";
-import {invoke} from "@tauri-apps/api/tauri";
+import {FileEntry, Scheme} from "@/type.ts";
+import {convertFileSrc, invoke} from "@tauri-apps/api/tauri";
+import {appLocalDataDir} from "@tauri-apps/api/path";
+import {type} from "@tauri-apps/api/os";
 
-export async function openReader(fileEntry: FileEntry, options?: Record<string, any>) {
-    const data: BookInfo = {
-        path: fileEntry.path,
+export async function openReader(fileEntry: FileEntry) {
+    console.log(fileEntry)
+    const separate = (await type()).startsWith("Windows") ? "\\" : "/"
+    const data = {
+        url: convertFileSrc(fileEntry.root + separate + fileEntry.path),
         name: fileEntry.name,
-        scheme: fileEntry.scheme,
-        options
     }
     await invoke("open_reader", {pass: JSON.stringify(data)})
 }
@@ -25,4 +27,9 @@ export async function deleteFile(fileEntry: FileEntry, options?: Record<string, 
 
 export async function listFiles(scheme: Scheme, path: string, options?: Record<string, any>) {
     return invoke<FileEntry[]>("list_files", {scheme, path: path.trim(), options})
+}
+
+export const useScheme = "fs";
+export const useOptions: Record<string, any> = {
+    "root": useScheme === 'fs' ? await appLocalDataDir() : "/"
 }
