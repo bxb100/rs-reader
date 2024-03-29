@@ -32,6 +32,7 @@ import {checkFile, deleteFile, listFiles, openReader, useOptions, useScheme} fro
 import {useUpload} from "@/components/hooks/useUpload.tsx";
 import {ScrollArea} from "@/components/ui/scroll-area.tsx";
 import {SheetDemo} from "@/pages/SheetPage.tsx";
+import {ModeToggle} from "@/components/mode-toggle.tsx";
 
 export const columns: (setRefresh: React.Dispatch<boolean>) => ColumnDef<FileEntry>[] = (setRefresh) => [
     {
@@ -237,14 +238,16 @@ export function DataTableDemo() {
                     className="max-w-sm mr-2"
                 />
                 <SheetDemo />
-                <Button variant="outline" size="icon" className="ml-auto" onClick={() => {
+
+                <Button variant="outline" size="icon" className="ml-auto mr-2" onClick={() => {
                     uploadDialog(path, "fs")
                 }}>
                     <UploadIcon className="h-4 w-4"/>
                 </Button>
+                <ModeToggle />
             </div>
-            <ScrollArea className="rounded-md border h-[420px]">
-                <Table className="border-b">
+            <ScrollArea className="rounded-md border max-h-[420px]">
+                <Table>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>

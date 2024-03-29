@@ -24,6 +24,7 @@ import _ from "lodash";
 import {MinusIcon, PlusIcon} from "@radix-ui/react-icons";
 import {useState} from "react";
 import {useScheme} from "@/components/api/reader.ts";
+import {ScrollArea} from "@/components/ui/scroll-area.tsx";
 
 export function SheetDemo() {
     interface Option {
@@ -110,27 +111,33 @@ export function SheetDemo() {
                     </div>
 
                     <label className="m-auto">Provider Options</label>
-                    {
-                        options.map((option, index) => (
-                            <div key={index} className="grid grid-cols-4 items-center gap-4">
-                                <Input placeholder="key" className="col-span-2"/>
-                                <Input placeholder="value" className="col-span-2"/>
-                            </div>
-                        ))
-                    }
+                    <ScrollArea className="max-h-[220px]">
+                        <div className="grid gap-4">
+                            {
+                                options.map((option, index) => (
+                                    <div key={index} className="grid grid-cols-4 items-center gap-4">
+                                        <Input placeholder="key" className="col-span-2"/>
+                                        <Input placeholder="value" className="col-span-2"/>
+                                    </div>
+                                ))
+                            }
+                        </div>
+                    </ScrollArea>
                     <div className="inline-block">
-                        <button className="float-right " onClick={() => setOptions([...options.slice(0, options.length - 1)])}>
-                            <MinusIcon />
+                        <button className="float-right "
+                                onClick={() => setOptions([...options.slice(0, options.length - 1)])}>
+                            <MinusIcon/>
                         </button>
                         <button className="float-right" onClick={() => setOptions(p => [...p, {key: "", value: ""}])}>
-                            <PlusIcon />
+                            <PlusIcon/>
                         </button>
 
                     </div>
+
                 </div>
-                <SheetFooter>
+                <SheetFooter className="fixed bottom-6 right-4">
                     <SheetClose asChild>
-                        <Button type="submit">Save changes</Button>
+                        <Button type="submit" variant="outline">Save changes</Button>
                     </SheetClose>
                 </SheetFooter>
             </SheetContent>
