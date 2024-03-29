@@ -1,11 +1,20 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
+use std::num::NonZeroUsize;
+use std::path::Path;
 use std::str::FromStr;
+use std::sync::Mutex;
+use std::{fs, thread};
 
-use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
-use opendal::Operator;
+use base64::Engine;
+use log::info;
+use lru::LruCache;
+use once_cell::sync::Lazy;
+use opendal::{EntryMode, Operator};
 use serde::{Deserialize, Serialize};
 use tauri::{Manager, WindowBuilder, WindowUrl};
+use uuid::Uuid;
 
 use crate::APP;
 
@@ -31,7 +40,7 @@ pub fn open_reader(pass: String) -> Result<(), String> {
     .resizable(true)
     .focused(true)
     .skip_taskbar(true)
-    .min_inner_size(820f64, 500f64)
+    // .min_inner_size(820f64, 500f64)
     .initialization_script(&format!("window.__DATA__ = {pass}"))
     .build()
     .unwrap();
@@ -46,21 +55,157 @@ struct ReaderPayload {
     options: Option<HashMap<String, String>>,
 }
 
+#[tauri::command]
+pub fn check_file(
+    path: String,
+    scheme: String,
+    options: Option<HashMap<String, String>>,
+) -> Result<bool, String> {
+    let op = init_operator(scheme, options).map_err(|e| format!("{e}"))?;
+    op.blocking().is_exist(&path).map_err(|e| format!("{e}"))
+}
+
 /// `readBinaryFile` super slow
 #[tauri::command]
 pub fn reade_file(
-    name: String,
+    path: String,
     scheme: String,
     options: Option<HashMap<String, String>>,
 ) -> Result<String, String> {
-    let scheme = opendal::Scheme::from_str(&scheme).map_err(|e| e.to_string())?;
+    let operator = init_operator(scheme.to_string(), options).map_err(|e| e.to_string())?;
+    let data = operator.blocking().read(&path).map_err(|e| e.to_string())?;
+
+    Ok(BASE64_STANDARD.encode(data))
+}
+
+type Cache = Lazy<Mutex<LruCache<String, i8>>>;
+
+static CACHE: Cache = Lazy::new(|| Mutex::new(LruCache::new(NonZeroUsize::new(5).unwrap())));
+
+fn init_operator(
+    scheme: String,
+    options: Option<HashMap<String, String>>,
+) -> opendal::Result<Operator> {
+    let scheme = opendal::Scheme::from_str(&scheme)?;
     let mut option = options.unwrap_or_default();
     if option.get("root").is_none() {
         option.insert("root".to_string(), "/".to_string());
     }
 
-    let operator = Operator::via_map(scheme, option).map_err(|e| e.to_string())?;
-    let data = operator.blocking().read(&name).map_err(|e| e.to_string())?;
+    Operator::via_map(scheme, option)
+}
 
-    Ok(BASE64_STANDARD.encode(data))
+#[tauri::command]
+pub fn get_status(id: String) -> i8 {
+    let mut cache = CACHE.lock().unwrap();
+    *cache.get(&id).unwrap()
+}
+
+#[tauri::command]
+pub fn write_file(
+    read_path: String,
+    save_path: String,
+    scheme: String,
+    options: Option<HashMap<String, String>>,
+) -> Result<String, String> {
+    info!(
+        "write_file: read_path: {}, save_path: {}, scheme: {:?}",
+        read_path, save_path, scheme
+    );
+
+    let uuid = Uuid::new_v4();
+    let uuid = uuid.to_string();
+    let id = uuid.clone();
+
+    {
+        let mut cache = CACHE.lock().unwrap();
+        cache.put(uuid.clone(), 0);
+    }
+
+    thread::spawn(move || {
+        let local_file_path = Path::new(&read_path);
+        let bytes = fs::read(local_file_path).unwrap();
+
+        let operator = init_operator(scheme.clone(), options).unwrap();
+
+        let default_fs_separate = "/";
+        #[cfg(target_os = "windows")]
+        let default_fs_separate = "\\";
+
+        let separate = if matches!(scheme.as_str(), "fs") {
+            default_fs_separate
+        } else {
+            "/"
+        };
+        let save_path = format!(
+            "{}{}{}",
+            save_path,
+            separate,
+            local_file_path.file_name().unwrap().to_str().unwrap()
+        );
+        let result = operator.blocking().write(&save_path, bytes);
+        {
+            info!("write_file: result: {:?}", result);
+            let mut cache = CACHE.lock().unwrap();
+            cache.put(id, result.map_or(-1, |_| 1));
+        }
+    });
+
+    Ok(uuid)
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct FileEntry {
+    name: String,
+    path: String,
+    scheme: String,
+    root: String,
+}
+
+#[tauri::command]
+pub fn list_files(
+    path: String,
+    scheme: String,
+    options: Option<HashMap<String, String>>,
+) -> Result<Vec<FileEntry>, String> {
+    let op = init_operator(scheme.clone(), options).map_err(|e| e.to_string())?;
+
+    let root_path = op.info().root().to_string();
+
+    let entries = op.blocking().list(&path).map_err(|e| format!("{e}"))?;
+
+    let mut results: Vec<FileEntry> = vec![];
+
+    for entry in entries {
+        match entry.metadata().mode() {
+            EntryMode::FILE => {
+                let name = entry.name();
+                if ![".mobi", ".epub", ".pdf"]
+                    .iter()
+                    .any(|&x| name.ends_with(x))
+                {
+                    continue;
+                }
+                results.push(FileEntry {
+                    name: entry.name().to_string(),
+                    path: entry.path().to_string(),
+                    scheme: scheme.clone(),
+                    root: root_path.clone(),
+                });
+            }
+            EntryMode::DIR => continue,
+            EntryMode::Unknown => continue,
+        }
+    }
+    Ok(results)
+}
+
+#[tauri::command]
+pub fn delete_file(
+    path: String,
+    scheme: String,
+    option: Option<HashMap<String, String>>,
+) -> Result<(), String> {
+    let op = init_operator(scheme, option).map_err(|e| e.to_string())?;
+    op.blocking().delete(&path).map_err(|e| e.to_string())
 }

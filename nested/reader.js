@@ -349,8 +349,8 @@ const b64toBlob = (b64Data, contentType = '', sliceSize = 512) => {
 
 const {invoke} = window.__TAURI__
 
-const {name, scheme, options} = window.__DATA__
-invoke('reade_file', {name, scheme, options})
+const {path, name, scheme, options} = window.__DATA__
+invoke('reade_file', {path, name, scheme, options})
     .then(data => b64toBlob(data))
     .then(blob => open(new File([blob], name)))
     .catch(error => {

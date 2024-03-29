@@ -3,15 +3,17 @@ import react from "@vitejs/plugin-react";
 import * as path from "node:path";
 
 // https://vitejs.dev/config/
-export default defineConfig(async () => ({
+export default defineConfig({
     plugins: [react()],
     define: {
+        // for test usage
         __ROOT_PATH: JSON.stringify(path.resolve(__dirname, 'test'))
     },
     resolve: {
         alias: {
             // https://github.com/vitejs/vite/issues/15412
             'foliate-js': path.resolve(__dirname, 'foliate-js'),
+            "@": path.resolve(__dirname, "./src"),
         }
     },
     build: {
@@ -28,7 +30,13 @@ export default defineConfig(async () => ({
                     }
                 }
             }
-        }
+        },
+        // Tauri supports es2021
+        target: process.env.TAURI_PLATFORM == 'windows' ? 'chrome105' : 'safari11',
+        // don't minify for debug builds
+        minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
+        // produce sourcemaps for debug builds
+        sourcemap: !!process.env.TAURI_DEBUG
     },
     // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
     //
@@ -43,4 +51,4 @@ export default defineConfig(async () => ({
             ignored: ["**/src-tauri/**"],
         },
     },
-}));
+});
