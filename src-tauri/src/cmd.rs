@@ -148,7 +148,7 @@ pub fn write_file(
         if !operator.is_exist(cs.to_str().unwrap()).map_err(|e| e.to_string()).unwrap() {
             operator.create_dir(cs.join("/").to_str().unwrap()).map_err(|e| e.to_string()).unwrap();
         }
-        
+
         let result = operator.write(&save_path, bytes);
         {
             info!("write_file: result: {:?}", result);
@@ -210,8 +210,9 @@ pub fn list_files(
 pub fn delete_file(
     path: String,
     scheme: String,
-    option: Option<HashMap<String, String>>,
+    options: Option<HashMap<String, String>>,
 ) -> Result<(), String> {
-    let op = init_operator(scheme, option).map_err(|e| e.to_string())?;
+    info!("delete_file: path: {}, scheme: {:?}, options: {:?}", path, scheme, options);
+    let op = init_operator(scheme, options).map_err(|e| e.to_string())?;
     op.blocking().delete(&path).map_err(|e| e.to_string())
 }

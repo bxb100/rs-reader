@@ -30,6 +30,8 @@ import _ from "lodash";
 import {useToast} from "@/components/ui/use-toast.ts";
 import {checkFile, deleteFile, listFiles, openReader, useOptions, useScheme} from "@/components/api/reader.ts";
 import {useUpload} from "@/components/hooks/useUpload.tsx";
+import {ScrollArea} from "@/components/ui/scroll-area.tsx";
+import {SheetDemo} from "@/pages/SheetPage.tsx";
 
 export const columns: (setRefresh: React.Dispatch<boolean>) => ColumnDef<FileEntry>[] = (setRefresh) => [
     {
@@ -195,11 +197,13 @@ export function DataTableDemo() {
         } else {
             search(path)
         }
+
     }, [])
 
+    const columns_ = columns(setRefresh)
     const table = useReactTable({
         data,
-        columns: columns(setRefresh),
+        columns: columns_,
         onSortingChange: setSorting,
         onColumnFiltersChange: setColumnFilters,
         getCoreRowModel: getCoreRowModel(),
@@ -230,16 +234,17 @@ export function DataTableDemo() {
                         }
                     }
                     }
-                    className="max-w-sm"
+                    className="max-w-sm mr-2"
                 />
+                <SheetDemo />
                 <Button variant="outline" size="icon" className="ml-auto" onClick={() => {
                     uploadDialog(path, "fs")
                 }}>
                     <UploadIcon className="h-4 w-4"/>
                 </Button>
             </div>
-            <div className="rounded-md border">
-                <Table>
+            <ScrollArea className="rounded-md border h-[420px]">
+                <Table className="border-b">
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>
@@ -258,6 +263,7 @@ export function DataTableDemo() {
                             </TableRow>
                         ))}
                     </TableHeader>
+
                     <TableBody>
                         {table.getRowModel().rows?.length ? (
                             table.getRowModel().rows.map((row) => (
@@ -278,7 +284,7 @@ export function DataTableDemo() {
                         ) : (
                             <TableRow>
                                 <TableCell
-                                    colSpan={columns.length}
+                                    colSpan={columns_.length}
                                     className="h-24 text-center"
                                 >
                                     No results.
@@ -287,7 +293,7 @@ export function DataTableDemo() {
                         )}
                     </TableBody>
                 </Table>
-            </div>
+            </ScrollArea>
 
         </div>
     );
