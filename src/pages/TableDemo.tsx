@@ -33,6 +33,7 @@ import {useUpload} from "@/components/hooks/useUpload.tsx";
 import {ScrollArea} from "@/components/ui/scroll-area.tsx";
 import {SheetDemo} from "@/pages/SheetPage.tsx";
 import {ModeToggle} from "@/components/mode-toggle.tsx";
+import {appLocalDataDir} from "@tauri-apps/api/path";
 
 export const columns: (setRefresh: React.Dispatch<boolean>) => ColumnDef<FileEntry>[] = (setRefresh) => [
     {
@@ -191,6 +192,9 @@ export function DataTableDemo() {
         [setData]
     )
 
+    const [sheetRootDir, setSheetRootDir] = useState("")
+    const [sheetDisable, setSheetDisable] = useState(true)
+
     useEffect(() => {
         if (useScheme === 'fs') {
             setPath("file/")
@@ -198,6 +202,11 @@ export function DataTableDemo() {
         } else {
             search(path)
         }
+
+        (async () => {
+            setSheetRootDir(await appLocalDataDir())
+            setSheetDisable(false)
+        })()
 
     }, [])
 
@@ -237,7 +246,12 @@ export function DataTableDemo() {
                     }
                     className="max-w-sm mr-2"
                 />
-                <SheetDemo />
+                {
+                    sheetDisable ?
+                        <Button variant="outline" disabled>Edit Provider {_.capitalize(useScheme)}</Button>:
+                        <SheetDemo appLocalDataDir={sheetRootDir}/>
+                }
+
 
                 <Button variant="outline" size="icon" className="ml-auto mr-2" onClick={() => {
                     uploadDialog(path, "fs")
