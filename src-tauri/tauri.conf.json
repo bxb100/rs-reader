@@ -35,6 +35,7 @@
             },
             "protocol": {
                 "assetScope": [
+                    "$TEMP/**",
                     "$DOWNLOAD/**",
                     "$APPLOCALDATA/**"
                 ],

@@ -12,8 +12,7 @@ import {
 
 import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select"
 import _ from "lodash";
-import {useState} from "react";
-import {useScheme} from "@/components/api/reader.ts";
+import {useEffect, useMemo, useState} from "react";
 import {z} from "zod";
 import {useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
@@ -29,11 +28,10 @@ import {
 import {ScrollArea} from "@/components/ui/scroll-area.tsx";
 import {Link2Icon, MinusIcon, PlusIcon} from "@radix-ui/react-icons";
 import {open} from '@tauri-apps/api/shell';
+import {useStore} from "@/components/hooks/useStore.tsx";
+import {Option, Scheme} from "@/type.ts";
+import {toast} from "@/components/ui/use-toast.ts";
 
-interface Option {
-    key: string,
-    value: string
-}
 
 const formSchema = z.object({
     scheme: z.string({
@@ -48,8 +46,6 @@ export function SheetDemo({appLocalDataDir}: { appLocalDataDir: string }) {
     const [options, setOptions] = useState<Option[]>([{key: "", value: ""}])
     const [sheetOpen, setSheetOpen] = useState(false)
 
-    const scheme = useScheme;
-
     // 1. Define your form.
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -58,30 +54,53 @@ export function SheetDemo({appLocalDataDir}: { appLocalDataDir: string }) {
             rootPath: appLocalDataDir,
         },
     })
+    const {scheme, provider, updateScheme, updateProvider} = useStore()
+
+    useEffect(() => {
+        if (scheme) {
+            form.setValue("scheme", scheme as string)
+        }
+        if (provider) {
+            form.setValue("rootPath", provider.rootPath)
+            if (provider.options) {
+                setOptions([...provider.options])
+            }
+        }
+
+    }, [scheme, provider])
 
     // 2. Define a submit handler.
     function onSubmit(values: z.infer<typeof formSchema>) {
-        // Do something with the form values.
-        // ✅ This will be type-safe and validated.
         console.log(values)
-        // filter options key value both are not empty
         let needSaveOptions = options.filter(option => option.key && option.value)
-        console.log(needSaveOptions)
         setOptions(needSaveOptions)
-        // setOpen(false)
+        updateProvider(values.scheme as Scheme, {rootPath: values.rootPath, options: needSaveOptions})
+            .then(() => {
+                toast({
+                    title: "success",
+                    description: "Provider updated."
+                })
+                setSheetOpen(false)
+            })
     }
 
+    const visibleOptions = useMemo(() => {
+        if (options && options.length > 0) {
+            return options
+        }
+        return [{key: "", value: ""}]
+    }, [options])
+
     const changeOptions = (index: number, type: "key" | "value", value: string) => {
-        const newOptions = [...options]
+        const newOptions = [...visibleOptions]
         newOptions[index][type] = value
         setOptions(newOptions)
     }
 
-
     return (
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
-                <Button variant="outline">Edit Provider {_.capitalize(scheme)}</Button>
+                <Button variant="outline">Edit Provider {_.capitalize(scheme as string)}</Button>
             </SheetTrigger>
             <SheetContent>
                 <SheetHeader>
@@ -98,7 +117,10 @@ export function SheetDemo({appLocalDataDir}: { appLocalDataDir: string }) {
                             render={({field}) => (
                                 <FormItem>
                                     <FormLabel>Scheme</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select onValueChange={e => {
+                                        field.onChange(e)
+                                        updateScheme(e as Scheme)
+                                    }} defaultValue={field.value}>
                                         <FormControl>
                                             <SelectTrigger className="col-span-3">
                                                 <SelectValue placeholder="Select a OpenDAL scheme"/>
@@ -204,7 +226,7 @@ export function SheetDemo({appLocalDataDir}: { appLocalDataDir: string }) {
                             <ScrollArea className="h-[120px] w-full">
                                 <div className="grid gap-4">
                                     {
-                                        options.map((option, index) => (
+                                        visibleOptions.map((option, index) => (
                                             <div key={index} className="grid grid-cols-4 items-center gap-4 p-0.5">
                                                 <Input placeholder="key" value={option.key} className="col-span-2"
                                                        onChange={e => {
@@ -221,9 +243,10 @@ export function SheetDemo({appLocalDataDir}: { appLocalDataDir: string }) {
                             </ScrollArea>
 
                             <FormDescription className="select-none">
-                                Set the provider options, see <a href="#"
-                                                                 onClick={() => open("https://opendal.apache.org/docs/category/services/")}> OpenDAL
-                                Docs</a>.
+                                Set the provider options, see
+                                <a href="#"
+                                   onClick={() => open("https://opendal.apache.org/docs/category/services/")}> OpenDAL Docs
+                                </a>.
                             </FormDescription>
                         </FormItem>
 

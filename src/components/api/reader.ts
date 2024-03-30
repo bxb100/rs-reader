@@ -1,6 +1,5 @@
 import {FileEntry, Scheme} from "@/type.ts";
 import {convertFileSrc, invoke} from "@tauri-apps/api/tauri";
-import {appLocalDataDir} from "@tauri-apps/api/path";
 import {type} from "@tauri-apps/api/os";
 
 export async function openReader(fileEntry: FileEntry) {
@@ -27,9 +26,4 @@ export async function deleteFile(fileEntry: FileEntry, options?: Record<string, 
 
 export async function listFiles(scheme: Scheme, path: string, options?: Record<string, any>) {
     return invoke<FileEntry[]>("list_files", {scheme, path: path.trim(), options})
-}
-
-export const useScheme = "fs";
-export const useOptions: Record<string, any> = {
-    "root": useScheme === 'fs' ? await appLocalDataDir() : "/"
 }

@@ -1,22 +1,18 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::num::NonZeroUsize;
 use std::path::Path;
 use std::str::FromStr;
-use std::sync::Mutex;
 use std::{fs, thread};
 
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use log::info;
-use lru::LruCache;
-use once_cell::sync::Lazy;
 use opendal::{EntryMode, Operator};
 use serde::{Deserialize, Serialize};
-use tauri::{Manager, WindowBuilder, WindowUrl};
+use tauri::{Manager, State, WindowBuilder, WindowUrl};
 use uuid::Uuid;
 
-use crate::APP;
+use crate::{APP, CacheWrapper};
 
 #[tauri::command]
 pub fn greet(name: &str) -> String {
@@ -78,9 +74,6 @@ pub fn reade_file(
     Ok(BASE64_STANDARD.encode(data))
 }
 
-type Cache = Lazy<Mutex<LruCache<String, i8>>>;
-
-static CACHE: Cache = Lazy::new(|| Mutex::new(LruCache::new(NonZeroUsize::new(5).unwrap())));
 
 fn init_operator(
     scheme: String,
@@ -96,8 +89,8 @@ fn init_operator(
 }
 
 #[tauri::command]
-pub fn get_status(id: String) -> i8 {
-    let mut cache = CACHE.lock().unwrap();
+pub fn get_status(id: String, cache: State<CacheWrapper>) -> i8 {
+    let mut cache = cache.0.lock().unwrap();
     *cache.get(&id).unwrap()
 }
 
@@ -107,6 +100,7 @@ pub fn write_file(
     save_path: String,
     scheme: String,
     options: Option<HashMap<String, String>>,
+    cache: State<CacheWrapper>
 ) -> Result<String, String> {
     info!(
         "write_file: read_path: {}, save_path: {}, scheme: {:?}, options: {:?}",
@@ -118,7 +112,7 @@ pub fn write_file(
     let id = uuid.clone();
 
     {
-        let mut cache = CACHE.lock().unwrap();
+        let mut cache = cache.0.lock().unwrap();
         cache.put(uuid.clone(), 0);
     }
 
@@ -146,13 +140,14 @@ pub fn write_file(
         let local_save_path = Path::new(&save_path);
         let cs = local_save_path.parent().unwrap();
         if !operator.is_exist(cs.to_str().unwrap()).map_err(|e| e.to_string()).unwrap() {
-            operator.create_dir(cs.join("/").to_str().unwrap()).map_err(|e| e.to_string()).unwrap();
+            operator.create_dir(&format!("{}/", cs.to_str().unwrap())).map_err(|e| e.to_string()).unwrap();
         }
 
         let result = operator.write(&save_path, bytes);
         {
             info!("write_file: result: {:?}", result);
-            let mut cache = CACHE.lock().unwrap();
+            let cache = APP.get().unwrap().state::<CacheWrapper>();
+            let mut cache = cache.0.lock().unwrap();
             cache.put(id, result.map_or(-1, |_| 1));
         }
     });

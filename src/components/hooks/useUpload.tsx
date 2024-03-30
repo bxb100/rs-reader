@@ -3,7 +3,6 @@ import {invoke} from "@tauri-apps/api/tauri";
 import {open} from "@tauri-apps/api/dialog";
 import {downloadDir} from "@tauri-apps/api/path";
 import {Scheme} from "@/type.ts";
-import {useOptions} from "@/components/api/reader.ts";
 
 export function useUpload() {
     const [taskId, setTaskId] = useState<string | null>(null)
@@ -25,7 +24,7 @@ export function useUpload() {
         }
     }, [taskId])
 
-    const uploadDialog = useCallback(async (savePath: string, scheme: Scheme) => {
+    const uploadDialog = useCallback(async (savePath: string, scheme: Scheme, options: Record<string, string>) => {
         const selected = await open({
             multiple: false,
             filters: [{
@@ -37,7 +36,7 @@ export function useUpload() {
 
         console.log(selected)
 
-        const taskId = await invoke<string>("write_file", {readPath: selected, savePath, scheme, options: useOptions})
+        const taskId = await invoke<string>("write_file", {readPath: selected, savePath, scheme, options})
         setTaskId(taskId)
     }, [])
 

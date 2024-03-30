@@ -28,14 +28,16 @@ import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "@/
 import {FileEntry} from "@/type.ts";
 import _ from "lodash";
 import {useToast} from "@/components/ui/use-toast.ts";
-import {checkFile, deleteFile, listFiles, openReader, useOptions, useScheme} from "@/components/api/reader.ts";
+import {checkFile, deleteFile, listFiles, openReader} from "@/components/api/reader.ts";
 import {useUpload} from "@/components/hooks/useUpload.tsx";
 import {ScrollArea} from "@/components/ui/scroll-area.tsx";
 import {SheetDemo} from "@/pages/SheetPage.tsx";
 import {ModeToggle} from "@/components/mode-toggle.tsx";
 import {appLocalDataDir} from "@tauri-apps/api/path";
+import {useStore} from "@/components/hooks/useStore.tsx";
+import {convert} from "@/lib/utils.ts";
 
-export const columns: (setRefresh: React.Dispatch<boolean>) => ColumnDef<FileEntry>[] = (setRefresh) => [
+export const columns: (setRefresh: React.Dispatch<boolean>, useOptions: Record<string, string>) => ColumnDef<FileEntry>[] = (setRefresh, useOptions) => [
     {
         accessorKey: "scheme",
         header: "Scheme",
@@ -121,8 +123,9 @@ export const columns: (setRefresh: React.Dispatch<boolean>) => ColumnDef<FileEnt
     },
 ]
 
-
 export function DataTableDemo() {
+    const {scheme, provider} = useStore()
+
     const [sorting, setSorting] = useState<SortingState>([])
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(
         []
@@ -176,7 +179,7 @@ export function DataTableDemo() {
     const search = useCallback(
         _.debounce((path) => {
             console.log(path)
-            listFiles(useScheme, path, useOptions)
+            listFiles(scheme, path, convert(provider))
                 .then((files: any) => {
                     console.log(files as FileEntry[])
                     setData(files as FileEntry[])
@@ -189,14 +192,14 @@ export function DataTableDemo() {
                     })
                 })
         }, 600),
-        [setData]
+        [setData, scheme, provider]
     )
 
     const [sheetRootDir, setSheetRootDir] = useState("")
     const [sheetDisable, setSheetDisable] = useState(true)
 
     useEffect(() => {
-        if (useScheme === 'fs') {
+        if (scheme === 'fs') {
             setPath("file/")
             search("file/")
         } else {
@@ -208,9 +211,9 @@ export function DataTableDemo() {
             setSheetDisable(false)
         })()
 
-    }, [])
+    }, [scheme, provider])
 
-    const columns_ = columns(setRefresh)
+    const columns_ = columns(setRefresh, convert(provider))
     const table = useReactTable({
         data,
         columns: columns_,
@@ -230,6 +233,7 @@ export function DataTableDemo() {
         },
     })
 
+
     return (
         <div className="w-full">
             <div className="flex items-center py-4">
@@ -248,17 +252,17 @@ export function DataTableDemo() {
                 />
                 {
                     sheetDisable ?
-                        <Button variant="outline" disabled>Edit Provider {_.capitalize(useScheme)}</Button>:
+                        <Button variant="outline" disabled>Edit Provider {_.capitalize(scheme)}</Button> :
                         <SheetDemo appLocalDataDir={sheetRootDir}/>
                 }
 
 
                 <Button variant="outline" size="icon" className="ml-auto mr-2" onClick={() => {
-                    uploadDialog(path, "fs")
+                    uploadDialog(path, scheme, convert(provider))
                 }}>
                     <UploadIcon className="h-4 w-4"/>
                 </Button>
-                <ModeToggle />
+                <ModeToggle/>
             </div>
             <ScrollArea className="rounded-md border max-h-[420px]">
                 <Table>

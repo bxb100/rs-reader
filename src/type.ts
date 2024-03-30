@@ -37,6 +37,16 @@ export type Scheme = "atomicserver" |
     "webhdfs" |
     "tikv";
 
+export interface Option {
+    key: string,
+    value: string
+}
+
+export interface Provider {
+    rootPath: string,
+    options?: Option[]
+}
+
 export interface BookInfo {
     name: string,
     path: string,
