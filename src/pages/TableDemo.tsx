@@ -34,7 +34,7 @@ import {ScrollArea} from "@/components/ui/scroll-area.tsx";
 import {SheetDemo} from "@/pages/SheetPage.tsx";
 import {ModeToggle} from "@/components/mode-toggle.tsx";
 import {appLocalDataDir} from "@tauri-apps/api/path";
-import {useStore} from "@/components/hooks/useStore.tsx";
+import {StoreContext, useStore} from "@/components/hooks/useStore.tsx";
 import {convert} from "@/lib/utils.ts";
 
 export const columns: (setRefresh: React.Dispatch<boolean>, useOptions: Record<string, string>) => ColumnDef<FileEntry>[] = (setRefresh, useOptions) => [
@@ -124,7 +124,8 @@ export const columns: (setRefresh: React.Dispatch<boolean>, useOptions: Record<s
 ]
 
 export function DataTableDemo() {
-    const {scheme, provider} = useStore()
+    const storeHook = useStore()
+    const {scheme, provider} = storeHook
 
     const [sorting, setSorting] = useState<SortingState>([])
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(
@@ -133,7 +134,7 @@ export function DataTableDemo() {
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
     const [rowSelection, setRowSelection] = useState({})
 
-    const [path, setPath] = useState<string>("");
+    const [path, setPath] = useState<string>("/");
     const [data, setData] = useState<FileEntry[]>([])
     const [refresh, setRefresh] = useState<boolean>(false)
     const {uploadDialog, status, setStatus} = useUpload();
@@ -199,19 +200,14 @@ export function DataTableDemo() {
     const [sheetDisable, setSheetDisable] = useState(true)
 
     useEffect(() => {
-        if (scheme === 'fs') {
-            setPath("file/")
-            search("file/")
-        } else {
+        if (path) {
             search(path)
         }
-
         (async () => {
             setSheetRootDir(await appLocalDataDir())
             setSheetDisable(false)
         })()
-
-    }, [scheme, provider])
+    }, [path, scheme, provider])
 
     const columns_ = columns(setRefresh, convert(provider))
     const table = useReactTable({
@@ -233,7 +229,6 @@ export function DataTableDemo() {
         },
     })
 
-
     return (
         <div className="w-full">
             <div className="flex items-center py-4">
@@ -253,7 +248,9 @@ export function DataTableDemo() {
                 {
                     sheetDisable ?
                         <Button variant="outline" disabled>Edit Provider {_.capitalize(scheme)}</Button> :
-                        <SheetDemo appLocalDataDir={sheetRootDir}/>
+                        <StoreContext.Provider value={storeHook}>
+                            <SheetDemo appLocalDataDir={sheetRootDir}/>
+                        </StoreContext.Provider>
                 }
 
 

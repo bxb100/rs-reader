@@ -1,6 +1,7 @@
-import {useEffect, useMemo, useState} from "react";
+import {createContext, useEffect, useMemo, useState} from "react";
 import {Provider, Scheme} from "@/type.ts";
 import {store} from "@/lib/store.ts";
+import {toast} from "@/components/ui/use-toast.ts";
 
 export function useStore() {
 
@@ -43,3 +44,22 @@ export function useStore() {
         [scheme, provider]
     )
 }
+
+export const StoreContext = createContext<ReturnType<typeof useStore>>({
+    scheme: "fs",
+    provider: {rootPath: "/"},
+    updateScheme: () => {
+        toast({
+            title: "Error",
+            variant: "destructive",
+            description: "project not ready",
+        })
+    },
+    updateProvider: async () => {
+        toast({
+            title: "Error",
+            variant: "destructive",
+            description: "project not ready",
+        })
+    }
+})

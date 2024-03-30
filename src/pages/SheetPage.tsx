@@ -12,7 +12,7 @@ import {
 
 import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select"
 import _ from "lodash";
-import {useEffect, useMemo, useState} from "react";
+import {useContext, useEffect, useMemo, useState} from "react";
 import {z} from "zod";
 import {useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
@@ -28,9 +28,9 @@ import {
 import {ScrollArea} from "@/components/ui/scroll-area.tsx";
 import {Link2Icon, MinusIcon, PlusIcon} from "@radix-ui/react-icons";
 import {open} from '@tauri-apps/api/shell';
-import {useStore} from "@/components/hooks/useStore.tsx";
 import {Option, Scheme} from "@/type.ts";
 import {toast} from "@/components/ui/use-toast.ts";
+import {StoreContext} from "@/components/hooks/useStore.tsx";
 
 
 const formSchema = z.object({
@@ -45,6 +45,7 @@ const formSchema = z.object({
 export function SheetDemo({appLocalDataDir}: { appLocalDataDir: string }) {
     const [options, setOptions] = useState<Option[]>([{key: "", value: ""}])
     const [sheetOpen, setSheetOpen] = useState(false)
+    const { scheme, provider, updateScheme, updateProvider } = useContext(StoreContext)
 
     // 1. Define your form.
     const form = useForm<z.infer<typeof formSchema>>({
@@ -54,7 +55,6 @@ export function SheetDemo({appLocalDataDir}: { appLocalDataDir: string }) {
             rootPath: appLocalDataDir,
         },
     })
-    const {scheme, provider, updateScheme, updateProvider} = useStore()
 
     useEffect(() => {
         if (scheme) {
