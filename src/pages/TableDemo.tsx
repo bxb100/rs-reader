@@ -1,4 +1,3 @@
-import * as React from "react"
 import {useCallback, useEffect, useState} from "react"
 import {CaretSortIcon, DotsHorizontalIcon, UploadIcon,} from "@radix-ui/react-icons"
 import {
@@ -37,7 +36,8 @@ import {appLocalDataDir} from "@tauri-apps/api/path";
 import {StoreContext, useStore} from "@/components/hooks/useStore.tsx";
 import {convert} from "@/lib/utils.ts";
 
-export const columns: (setRefresh: React.Dispatch<boolean>, useOptions: Record<string, string>) => ColumnDef<FileEntry>[] = (setRefresh, useOptions) => [
+export const columns:
+    ( view: (fileEntry: FileEntry) => void, deleteE: (fileEntry: FileEntry) => void) => ColumnDef<FileEntry>[] = (view, deleteE) => [
     {
         accessorKey: "scheme",
         header: "Scheme",
@@ -70,7 +70,6 @@ export const columns: (setRefresh: React.Dispatch<boolean>, useOptions: Record<s
         enableHiding: false,
         cell: ({row}) => {
             const fileEntry = row.original
-            const {toast} = useToast();
 
             return (
                 <DropdownMenu>
@@ -88,30 +87,8 @@ export const columns: (setRefresh: React.Dispatch<boolean>, useOptions: Record<s
                             Copy Path
                         </DropdownMenuItem>
                         <DropdownMenuSeparator/>
-                        <DropdownMenuItem onClick={async () => {
-                            checkFile(fileEntry, useOptions)
-                                .then(bool => {
-                                    if (bool) {
-                                        openReader(fileEntry)
-                                    } else {
-                                        toast({
-                                            title: "Error",
-                                            description: "File not found",
-                                        })
-                                    }
-                                })
-
-                        }}>View</DropdownMenuItem>
-                        <DropdownMenuItem onClick={async () => {
-                            await deleteFile(fileEntry, useOptions).then(() => {
-                                toast({
-                                    title: "Success",
-                                    description: "File deleted",
-                                })
-                            }).finally(() => {
-                                setRefresh(true)
-                            })
-                        }}>
+                        <DropdownMenuItem onClick={async () => view(fileEntry)}>View</DropdownMenuItem>
+                        <DropdownMenuItem onClick={async () => deleteE(fileEntry)}>
                             <label className="text-red-600">
                                 Delete
                             </label>
@@ -136,56 +113,57 @@ export function DataTableDemo() {
 
     const [path, setPath] = useState<string>("/");
     const [data, setData] = useState<FileEntry[]>([])
-    const [refresh, setRefresh] = useState<boolean>(false)
-    const {uploadDialog, status, setStatus} = useUpload();
+    const {uploadDialog, status} = useUpload();
 
     useEffect(() => {
-        if (status != null) {
-            if (status == 0) {
-                toast({
-                    title: "Uploading",
-                    description: "Please wait",
-                })
-                return
-            } else if (status == 1) {
-                toast({
-                    title: "Success",
-                    description: "File uploaded",
-                })
-                setRefresh(true);
-                setStatus(null)
-            } else {
-                toast({
-                    variant: "destructive",
-                    title: "Error",
-                    description: "File upload failed",
-                })
-                setRefresh(true);
-                setStatus(null)
-            }
-
-            return () => setStatus(null)
+        if (status !== 0) {
+            search(path)
         }
     }, [status])
 
-    useEffect(() => {
-        if (refresh) {
-            setRefresh(false)
-            search(path)
-        }
-    }, [refresh])
-
     const {toast} = useToast()
+
+    const view = useCallback((fileEntry: FileEntry) => {
+        checkFile(fileEntry, convert(provider!))
+            .then(bool => {
+                if (bool) {
+                    openReader(fileEntry, convert(provider!))
+                } else {
+                    toast({
+                        title: "Error",
+                        description: "File not found",
+                    })
+                }
+            })
+    }, [provider])
+
+    const deleteE = useCallback((fileEntry: FileEntry) => {
+        deleteFile(fileEntry, convert(provider!)).then(() => {
+            toast({
+                title: "Success",
+                description: "File deleted",
+            })
+        }).finally(() => {
+            search(path)
+        })
+    }, [provider])
 
     const search = useCallback(
         _.debounce((path) => {
-            console.log(path)
+            if (!scheme || !provider) {
+                return
+            }
+            if (scheme != provider.scheme) {
+                return
+            }
+            console.log(path, scheme, provider)
             listFiles(scheme, path, convert(provider))
                 .then((files: any) => {
                     console.log(files as FileEntry[])
                     setData(files as FileEntry[])
                 })
                 .catch((e) => {
+                    console.error(e)
                     toast({
                         variant: "destructive",
                         title: "Error",
@@ -209,7 +187,7 @@ export function DataTableDemo() {
         })()
     }, [path, scheme, provider])
 
-    const columns_ = columns(setRefresh, convert(provider))
+    const columns_ = columns(view, deleteE)
     const table = useReactTable({
         data,
         columns: columns_,
@@ -255,7 +233,7 @@ export function DataTableDemo() {
 
 
                 <Button variant="outline" size="icon" className="ml-auto mr-2" onClick={() => {
-                    uploadDialog(path, scheme, convert(provider))
+                    uploadDialog(path, scheme, convert(provider!))
                 }}>
                     <UploadIcon className="h-4 w-4"/>
                 </Button>

@@ -2,11 +2,21 @@ import {FileEntry, Scheme} from "@/type.ts";
 import {convertFileSrc, invoke} from "@tauri-apps/api/tauri";
 import {type} from "@tauri-apps/api/os";
 
-export async function openReader(fileEntry: FileEntry) {
-    console.log(fileEntry)
+export async function openReader(fileEntry: FileEntry, options?: Record<string, any>) {
+    console.log(fileEntry, options)
     const separate = (await type()).startsWith("Windows") ? "\\" : "/"
+    let filePath = fileEntry.root + separate + fileEntry.path
+    if (fileEntry.scheme !== "fs") {
+        // need download local first
+        filePath = await invoke("download_file", {
+            scheme: fileEntry.scheme,
+            path: fileEntry.path,
+            options
+        })
+        console.log(filePath)
+    }
     const data = {
-        url: convertFileSrc(fileEntry.root + separate + fileEntry.path),
+        url: convertFileSrc(filePath),
         name: fileEntry.name,
     }
     await invoke("open_reader", {pass: JSON.stringify(data)})

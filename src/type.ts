@@ -43,6 +43,7 @@ export interface Option {
 }
 
 export interface Provider {
+    scheme: Scheme,
     rootPath: string,
     options?: Option[]
 }

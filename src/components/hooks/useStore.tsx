@@ -6,9 +6,7 @@ import {toast} from "@/components/ui/use-toast.ts";
 export function useStore() {
 
     const [scheme, setScheme] = useState<Scheme>("fs");
-    const [provider, setProvider] = useState<Provider>({
-        rootPath: "/"
-    })
+    const [provider, setProvider] = useState<Provider>()
 
     useEffect(() => {
         store.get("enable").then((scheme) => {
@@ -23,7 +21,7 @@ export function useStore() {
             if (provider) {
                 setProvider(provider as Provider)
             } else {
-                setProvider({rootPath: "/"})
+                setProvider({rootPath: "/", scheme: scheme})
             }
         })
     }, [scheme])
@@ -47,7 +45,7 @@ export function useStore() {
 
 export const StoreContext = createContext<ReturnType<typeof useStore>>({
     scheme: "fs",
-    provider: {rootPath: "/"},
+    provider: undefined,
     updateScheme: () => {
         toast({
             title: "Error",

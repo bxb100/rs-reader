@@ -45,7 +45,7 @@ const formSchema = z.object({
 export function SheetDemo({appLocalDataDir}: { appLocalDataDir: string }) {
     const [options, setOptions] = useState<Option[]>([{key: "", value: ""}])
     const [sheetOpen, setSheetOpen] = useState(false)
-    const { scheme, provider, updateScheme, updateProvider } = useContext(StoreContext)
+    const {scheme, provider, updateProvider, updateScheme} = useContext(StoreContext)
 
     // 1. Define your form.
     const form = useForm<z.infer<typeof formSchema>>({
@@ -74,7 +74,7 @@ export function SheetDemo({appLocalDataDir}: { appLocalDataDir: string }) {
         console.log(values)
         let needSaveOptions = options.filter(option => option.key && option.value)
         setOptions(needSaveOptions)
-        updateProvider(values.scheme as Scheme, {rootPath: values.rootPath, options: needSaveOptions})
+        updateProvider(values.scheme as Scheme, {rootPath: values.rootPath, options: needSaveOptions, scheme})
             .then(() => {
                 toast({
                     title: "success",
@@ -245,7 +245,8 @@ export function SheetDemo({appLocalDataDir}: { appLocalDataDir: string }) {
                             <FormDescription className="select-none">
                                 Set the provider options, see
                                 <a href="#"
-                                   onClick={() => open("https://opendal.apache.org/docs/category/services/")}> OpenDAL Docs
+                                   onClick={() => open("https://opendal.apache.org/docs/category/services/")}> OpenDAL
+                                    Docs
                                 </a>.
                             </FormDescription>
                         </FormItem>

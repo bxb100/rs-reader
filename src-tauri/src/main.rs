@@ -1,10 +1,10 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::num::NonZeroUsize;
-use std::sync::Mutex;
 use lru::LruCache;
 use once_cell::sync::OnceCell;
+use std::num::NonZeroUsize;
+use std::sync::Mutex;
 use tauri::Manager;
 use tauri_plugin_log::LogTarget;
 
@@ -30,7 +30,9 @@ fn main() {
         .setup(|app| {
             APP.get_or_init(|| app.handle());
             init_config(app);
-            app.manage(CacheWrapper(Mutex::new(LruCache::new(NonZeroUsize::new(5).unwrap()))));
+            app.manage(CacheWrapper(Mutex::new(LruCache::new(
+                NonZeroUsize::new(5).unwrap(),
+            ))));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -41,7 +43,8 @@ fn main() {
             get_status,
             list_files,
             check_file,
-            delete_file
+            delete_file,
+            download_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

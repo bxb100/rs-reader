@@ -1,18 +1,20 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::fs;
 use std::path::Path;
 use std::str::FromStr;
-use std::{fs, thread};
 
 use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
 use log::info;
 use opendal::{EntryMode, Operator};
 use serde::{Deserialize, Serialize};
+use tauri::api::path::app_cache_dir;
 use tauri::{Manager, State, WindowBuilder, WindowUrl};
+use tokio::fs::File;
 use uuid::Uuid;
 
-use crate::{APP, CacheWrapper};
+use crate::{CacheWrapper, APP};
 
 #[tauri::command]
 pub fn greet(name: &str) -> String {
@@ -52,28 +54,54 @@ struct ReaderPayload {
 }
 
 #[tauri::command]
-pub fn check_file(
+pub async fn check_file(
     path: String,
     scheme: String,
     options: Option<HashMap<String, String>>,
 ) -> Result<bool, String> {
     let op = init_operator(scheme, options).map_err(|e| format!("{e}"))?;
-    op.blocking().is_exist(&path).map_err(|e| format!("{e}"))
+    let result = op.is_exist(&path).await.map_err(|e| format!("{e}"))?;
+    Ok(result)
 }
 
 /// `readBinaryFile` super slow
 #[tauri::command]
-pub fn reade_file(
+pub async fn reade_file(
     path: String,
     scheme: String,
     options: Option<HashMap<String, String>>,
 ) -> Result<String, String> {
     let operator = init_operator(scheme.to_string(), options).map_err(|e| e.to_string())?;
-    let data = operator.blocking().read(&path).map_err(|e| e.to_string())?;
-
+    let data = operator.read(&path).await.map_err(|e| e.to_string())?;
     Ok(BASE64_STANDARD.encode(data))
 }
 
+#[tauri::command]
+pub async fn download_file(
+    scheme: String,
+    path: String,
+    options: Option<HashMap<String, String>>,
+) -> Result<String, String> {
+    let mut cache_dir = app_cache_dir(&APP.get().unwrap().config()).unwrap();
+    cache_dir = cache_dir.join("rs-reader").join(path.clone());
+    // check file is existed
+    if cache_dir.exists() {
+        info!("file is existed: {:?}", cache_dir.to_str().unwrap());
+        return Ok(cache_dir.to_str().unwrap().to_string());
+    }
+
+    let operator = init_operator(scheme.to_string(), options).map_err(|e| e.to_string())?;
+    // make sure the dir exist
+    fs::create_dir_all(cache_dir.parent().unwrap()).map_err(|e| e.to_string())?;
+    let mut data = operator.reader(&path).await.map_err(|e| e.to_string())?;
+    let mut file = File::create(cache_dir.clone())
+        .await
+        .map_err(|e| e.to_string())?;
+    tokio::io::copy(&mut data, &mut file)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(cache_dir.to_str().unwrap().to_string())
+}
 
 fn init_operator(
     scheme: String,
@@ -95,12 +123,12 @@ pub fn get_status(id: String, cache: State<CacheWrapper>) -> i8 {
 }
 
 #[tauri::command]
-pub fn write_file(
+pub async fn write_file(
     read_path: String,
     save_path: String,
     scheme: String,
     options: Option<HashMap<String, String>>,
-    cache: State<CacheWrapper>
+    cache: State<'_, CacheWrapper>,
 ) -> Result<String, String> {
     info!(
         "write_file: read_path: {}, save_path: {}, scheme: {:?}, options: {:?}",
@@ -115,12 +143,10 @@ pub fn write_file(
         let mut cache = cache.0.lock().unwrap();
         cache.put(uuid.clone(), 0);
     }
-
-    thread::spawn(move || {
+    tokio::spawn(async move {
         let local_file_path = Path::new(&read_path);
-        let bytes = fs::read(local_file_path).unwrap();
 
-        let operator = init_operator(scheme.clone(), options).unwrap().blocking();
+        let operator = init_operator(scheme.clone(), options).unwrap();
 
         let default_fs_separate = "/";
         #[cfg(target_os = "windows")]
@@ -139,11 +165,19 @@ pub fn write_file(
         );
         let local_save_path = Path::new(&save_path);
         let cs = local_save_path.parent().unwrap();
-        if !operator.is_exist(cs.to_str().unwrap()).map_err(|e| e.to_string()).unwrap() {
-            operator.create_dir(&format!("{}/", cs.to_str().unwrap())).map_err(|e| e.to_string()).unwrap();
+        if let Ok(false) = operator.is_exist(cs.to_str().unwrap()).await {
+            operator
+                .create_dir(&format!("{}/", cs.to_str().unwrap()))
+                .await
+                .expect("create dir failed");
         }
-
-        let result = operator.write(&save_path, bytes);
+        
+        let mut result = operator.writer(&save_path).await.unwrap();
+        let file = File::open(local_file_path).await.unwrap();
+        // seems the using `copy` buffer small
+        let mut reader = tokio::io::BufReader::new(file);
+        
+        let result = tokio::io::copy_buf(&mut reader, &mut result).await;
         {
             info!("write_file: result: {:?}", result);
             let cache = APP.get().unwrap().state::<CacheWrapper>();
@@ -164,7 +198,7 @@ pub struct FileEntry {
 }
 
 #[tauri::command]
-pub fn list_files(
+pub async fn list_files(
     path: String,
     scheme: String,
     options: Option<HashMap<String, String>>,
@@ -173,7 +207,8 @@ pub fn list_files(
 
     let root_path = op.info().root().to_string();
 
-    let entries = op.blocking().list(&path).map_err(|e| format!("{e}"))?;
+    // Create the runtime
+    let entries = op.list(&path).await.map_err(|e| format!("{e}"))?;
 
     let mut results: Vec<FileEntry> = vec![];
 
@@ -202,12 +237,27 @@ pub fn list_files(
 }
 
 #[tauri::command]
-pub fn delete_file(
+pub async fn delete_file(
     path: String,
     scheme: String,
     options: Option<HashMap<String, String>>,
 ) -> Result<(), String> {
-    info!("delete_file: path: {}, scheme: {:?}, options: {:?}", path, scheme, options);
+    info!(
+        "delete_file: path: {}, scheme: {:?}, options: {:?}",
+        path, scheme, options
+    );
+
+    if scheme != "fs" {
+        let path = path.clone();
+        tokio::spawn(async move {
+            let mut cache_dir = app_cache_dir(&APP.get().unwrap().config()).unwrap();
+            cache_dir = cache_dir.join("rs-reader").join(path);
+            fs::remove_file(cache_dir)
+                .map_err(|e| e.to_string())
+                .unwrap();
+        });
+    }
+
     let op = init_operator(scheme, options).map_err(|e| e.to_string())?;
-    op.blocking().delete(&path).map_err(|e| e.to_string())
+    op.delete(&path).await.map_err(|e| e.to_string())
 }

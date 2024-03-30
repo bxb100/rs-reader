@@ -37,7 +37,8 @@
                 "assetScope": [
                     "$TEMP/**",
                     "$DOWNLOAD/**",
-                    "$APPLOCALDATA/**"
+                    "$APPLOCALDATA/**",
+                    "$APPCACHE/**"
                 ],
                 "all": true
             },

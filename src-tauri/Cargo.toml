@@ -24,6 +24,7 @@ opendal = "0.40.0"
 uuid = { version = "1.8.0", features = ["v4"] }
 lru = "0"
 log = "^0.4"
+tokio = { version = "1.37", features = ["fs"] }
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
