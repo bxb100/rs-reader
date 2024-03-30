@@ -1,7 +1,12 @@
-# Tauri + React + Typescript
+## Purpose
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+This project build on [foliate](https://github.com/johnfactotum/foliate/), [tauri](https://tauri.app), [OpenDAL](https://opendal.apache.org/)
 
-## Recommended IDE Setup
+It's a simple ebook reader, and build for learn how to interact with OpenDAL, and how to build a desktop app with tauri.
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+## Features
+
+* EPUB, MOBI, KF8 (AZW3), FB2, CBZ, PDF
+* Support remote storage (S3, WebDAV, FS, etc.)
+
+

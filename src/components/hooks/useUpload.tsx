@@ -18,13 +18,8 @@ export function useUpload() {
                 description: "Please wait",
             })
             intervalId = setInterval(() => {
-
                 invoke("get_status", {id: taskId}).then((status) => {
                     if (status == 0) {
-                        toast({
-                            title: "Uploading",
-                            description: "Please wait",
-                        })
                         return
                     }
                     if (status == 1) {
@@ -48,6 +43,8 @@ export function useUpload() {
                         title: "Error",
                         description: e,
                     })
+                    setTaskId(null)
+                    clearInterval(intervalId)
                 });
             }, 1000)
         }
