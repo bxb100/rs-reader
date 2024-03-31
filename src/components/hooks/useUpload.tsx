@@ -56,7 +56,7 @@ export function useUpload() {
             multiple: false,
             filters: [{
                 name: 'Books',
-                extensions: ['mobi', 'epub', 'pdf']
+                extensions: ['mobi', 'epub', 'pdf', 'cbz', 'fb2', 'fbz', 'zip', 'mobi']
             }],
             defaultPath: await downloadDir(),
         }) as string;

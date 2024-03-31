@@ -178,7 +178,7 @@ export function DataTableDemo() {
     const [sheetDisable, setSheetDisable] = useState(true)
 
     useEffect(() => {
-        if (path) {
+        if (path && (path.endsWith("/") || path.endsWith("\\"))) {
             search(path)
         }
         (async () => {
@@ -207,6 +207,11 @@ export function DataTableDemo() {
         },
     })
 
+    const [seed, setSeed] = useState(1);
+    const reset = () => {
+        setSeed(Math.random());
+    }
+
     return (
         <div className="w-full">
             <div className="flex items-center py-4">
@@ -227,10 +232,9 @@ export function DataTableDemo() {
                     sheetDisable ?
                         <Button variant="outline" disabled>Edit Provider {_.capitalize(scheme)}</Button> :
                         <StoreContext.Provider value={storeHook}>
-                            <SheetDemo appLocalDataDir={sheetRootDir}/>
+                            <SheetDemo appLocalDataDir={sheetRootDir} key={seed} reset={reset}/>
                         </StoreContext.Provider>
                 }
-
 
                 <Button variant="outline" size="icon" className="ml-auto mr-2" onClick={() => {
                     uploadDialog(path, scheme, convert(provider!))

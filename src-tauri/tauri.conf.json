@@ -56,12 +56,12 @@
             }
         ],
         "security": {
-            "csp": "script-src 'unsafe-eval' 'self'; default-src blob: data: filesystem: ws: wss: http: https: tauri: 'unsafe-eval' 'unsafe-inline' 'self'; img-src asset: http: https: data: 'self'; content-src * asset: 'self';"
+            "dangerousDisableAssetCspModification": true
         },
         "bundle": {
             "active": true,
             "targets": "all",
-            "identifier": "com.tauri.dev",
+            "identifier": "run.tomcat.reader",
             "icon": [
                 "icons/32x32.png",
                 "icons/128x128.png",

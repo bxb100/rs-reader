@@ -171,12 +171,12 @@ pub async fn write_file(
                 .await
                 .expect("create dir failed");
         }
-        
+
         let mut result = operator.writer(&save_path).await.unwrap();
         let file = File::open(local_file_path).await.unwrap();
         // seems the using `copy` buffer small
         let mut reader = tokio::io::BufReader::new(file);
-        
+
         let result = tokio::io::copy_buf(&mut reader, &mut result).await;
         {
             info!("write_file: result: {:?}", result);
@@ -216,7 +216,7 @@ pub async fn list_files(
         match entry.metadata().mode() {
             EntryMode::FILE => {
                 let name = entry.name();
-                if ![".mobi", ".epub", ".pdf"]
+                if ![".mobi", ".epub", ".pdf", ".cbz", ".fb2", ".fbz", ".zip"]
                     .iter()
                     .any(|&x| name.ends_with(x))
                 {

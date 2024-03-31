@@ -9,4 +9,13 @@ It's a simple ebook reader, and build for learn how to interact with OpenDAL, an
 * EPUB, MOBI, KF8 (AZW3), FB2, CBZ, PDF
 * Support remote storage (S3, WebDAV, FS, etc.)
 
+## Attention
 
+This project is experimental, and build for learning, so it logic so simple:
+
+1. using `FS` save file to `$localDataDir/run.tomcat.reader/`[^1]
+2. other provider will first save file to `$cacheDir/run.tomcat.reader/`[^2] and then open it.
+
+
+[^1]: https://tauri.app/v1/api/js/path/#applocaldatadir
+[^2]: https://tauri.app/v1/api/js/path/#cachedir

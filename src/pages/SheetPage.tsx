@@ -28,7 +28,7 @@ import {
 import {ScrollArea} from "@/components/ui/scroll-area.tsx";
 import {Link2Icon, MinusIcon, PlusIcon} from "@radix-ui/react-icons";
 import {open} from '@tauri-apps/api/shell';
-import {Option, Scheme} from "@/type.ts";
+import {Option, Provider, Scheme} from "@/type.ts";
 import {toast} from "@/components/ui/use-toast.ts";
 import {StoreContext} from "@/components/hooks/useStore.tsx";
 
@@ -42,32 +42,46 @@ const formSchema = z.object({
     }),
 })
 
-export function SheetDemo({appLocalDataDir}: { appLocalDataDir: string }) {
+export function SheetDemo({appLocalDataDir, reset}: { appLocalDataDir: string, reset: () => void }) {
     const [options, setOptions] = useState<Option[]>([{key: "", value: ""}])
     const [sheetOpen, setSheetOpen] = useState(false)
-    const {scheme, provider, updateProvider, updateScheme} = useContext(StoreContext)
+    const {scheme, provider, updateProvider, getProvider} = useContext(StoreContext)
+    const [formScheme, setFormScheme] = useState(scheme)
+
 
     // 1. Define your form.
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            scheme: "fs",
+            scheme: scheme,
             rootPath: appLocalDataDir,
         },
     })
 
     useEffect(() => {
-        if (scheme) {
-            form.setValue("scheme", scheme as string)
-        }
         if (provider) {
             form.setValue("rootPath", provider.rootPath)
             if (provider.options) {
                 setOptions([...provider.options])
             }
         }
+    }, [provider])
 
-    }, [scheme, provider])
+    useEffect(() => {
+        getProvider(scheme).then((p) => {
+            if (p) {
+                const pro = p as Provider;
+                form.setValue("rootPath", pro.rootPath)
+                if (pro.options) {
+                    setOptions([...pro.options])
+                }
+            } else {
+                // if config not exist, set default value
+                form.setValue("rootPath", formScheme === 'fs' ? appLocalDataDir : "/")
+            }
+
+        })
+    }, [formScheme])
 
     // 2. Define a submit handler.
     function onSubmit(values: z.infer<typeof formSchema>) {
@@ -98,7 +112,10 @@ export function SheetDemo({appLocalDataDir}: { appLocalDataDir: string }) {
     }
 
     return (
-        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <Sheet open={sheetOpen} onOpenChange={e => {
+            setSheetOpen(e)
+            if (!e) reset()
+        }} >
             <SheetTrigger asChild>
                 <Button variant="outline">Edit Provider {_.capitalize(scheme as string)}</Button>
             </SheetTrigger>
@@ -119,7 +136,7 @@ export function SheetDemo({appLocalDataDir}: { appLocalDataDir: string }) {
                                     <FormLabel>Scheme</FormLabel>
                                     <Select onValueChange={e => {
                                         field.onChange(e)
-                                        updateScheme(e as Scheme)
+                                        setFormScheme(e as Scheme)
                                     }} defaultValue={field.value}>
                                         <FormControl>
                                             <SelectTrigger className="col-span-3">
