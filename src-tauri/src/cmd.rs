@@ -32,7 +32,6 @@ pub fn open_reader(pass: String) -> Result<(), String> {
         WindowUrl::App("nested/reader.html".into()),
     )
     .title("Reader")
-    .hidden_title(true)
     .additional_browser_args("--disable-web-security")
     .visible(true)
     .resizable(true)
