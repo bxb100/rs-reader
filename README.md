@@ -16,6 +16,10 @@ This project is experimental, and build for learning, so it logic so simple:
 1. using `FS` save file to `$localDataDir/run.tomcat.reader/`[^1]
 2. other provider will first save file to `$cacheDir/run.tomcat.reader/`[^2] and then open it.
 
+---
+
+<img width="1197" alt="image" src="https://github.com/bxb100/rs-reader/assets/20685961/f0c5d3fe-79fe-4dc3-9cfb-3984a1c10d12">
+
 
 [^1]: https://tauri.app/v1/api/js/path/#applocaldatadir
 [^2]: https://tauri.app/v1/api/js/path/#cachedir
