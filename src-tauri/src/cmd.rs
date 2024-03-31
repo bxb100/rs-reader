@@ -26,7 +26,7 @@ pub fn open_reader(pass: String) -> Result<(), String> {
     let handler = APP.get().unwrap();
     let win_len = handler.windows().keys().len();
 
-    WindowBuilder::new(
+    let builder = WindowBuilder::new(
         handler,
         format!("reader-{win_len}"),
         WindowUrl::App("nested/reader.html".into()),
@@ -39,9 +39,12 @@ pub fn open_reader(pass: String) -> Result<(), String> {
     .focused(true)
     .skip_taskbar(true)
     // .min_inner_size(820f64, 500f64)
-    .initialization_script(&format!("window.__DATA__ = JSON.parse(`{pass}`)"))
-    .build()
-    .unwrap();
+    .initialization_script(&format!("window.__DATA__ = JSON.parse(`{pass}`)"));
+    
+    #[cfg(target_os = "macos")]
+    builder.hidden_title(true).build().unwrap();
+    #[cfg(not(target_os = "macos"))]
+    builder.build().unwrap();
 
     Ok(())
 }
