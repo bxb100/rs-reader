@@ -29,7 +29,7 @@ fn main() {
         .plugin(tauri_plugin_store::Builder::default().build())
         .setup(|app| {
             APP.get_or_init(|| app.handle());
-            init_config(app);
+            init_config(app)?;
             app.manage(CacheWrapper(Mutex::new(LruCache::new(
                 NonZeroUsize::new(5).unwrap(),
             ))));

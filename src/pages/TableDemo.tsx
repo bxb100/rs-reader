@@ -35,9 +35,11 @@ import {ModeToggle} from "@/components/mode-toggle.tsx";
 import {appLocalDataDir} from "@tauri-apps/api/path";
 import {StoreContext, useStore} from "@/components/hooks/useStore.tsx";
 import {convert} from "@/lib/utils.ts";
+import {path} from "@tauri-apps/api";
+import {listen} from "@tauri-apps/api/event";
 
 export const columns:
-    ( view: (fileEntry: FileEntry) => void, deleteE: (fileEntry: FileEntry) => void) => ColumnDef<FileEntry>[] = (view, deleteE) => [
+    (view: (fileEntry: FileEntry) => void, deleteFile: (fileEntry: FileEntry) => void) => ColumnDef<FileEntry>[] = (view, deleteFile) => [
     {
         accessorKey: "scheme",
         header: "Scheme",
@@ -82,13 +84,15 @@ export const columns:
                     <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuItem
-                            onClick={() => navigator.clipboard.writeText(fileEntry.path)}
+                            onClick={async () => {
+                                await navigator.clipboard.writeText(await path.join(fileEntry.root, fileEntry.path))
+                            }}
                         >
                             Copy Path
                         </DropdownMenuItem>
                         <DropdownMenuSeparator/>
                         <DropdownMenuItem onClick={async () => view(fileEntry)}>View</DropdownMenuItem>
-                        <DropdownMenuItem onClick={async () => deleteE(fileEntry)}>
+                        <DropdownMenuItem onClick={async () => deleteFile(fileEntry)}>
                             <label className="text-red-600">
                                 Delete
                             </label>
@@ -113,9 +117,10 @@ export function DataTableDemo() {
 
     const [path, setPath] = useState<string>("/");
     const [data, setData] = useState<FileEntry[]>([])
-    const {uploadDialog, status} = useUpload();
+    const {uploadDialog, status, uploadFile} = useUpload();
 
     useEffect(() => {
+        console.log(status)
         if (status !== 0) {
             search(path)
         }
@@ -149,7 +154,7 @@ export function DataTableDemo() {
     }, [provider])
 
     const search = useCallback(
-        _.debounce((path) => {
+        (path: string) => {
             if (!scheme || !provider) {
                 return
             }
@@ -170,7 +175,7 @@ export function DataTableDemo() {
                         description: e,
                     })
                 })
-        }, 600),
+        },
         [setData, scheme, provider]
     )
 
@@ -184,6 +189,19 @@ export function DataTableDemo() {
         (async () => {
             setSheetRootDir(await appLocalDataDir())
             setSheetDisable(false)
+
+            const unListen = await listen('tauri://file-drop', (event: {payload: string[]}) => {
+                if (event.payload.length > 1) {
+                    toast({
+                        variant: "destructive",
+                        title: "Error",
+                        description: "Only one file can upload"
+                    })
+                    return
+                }
+                uploadFile(event.payload[0].toString(), path, scheme, convert(provider!))
+            })
+            return () => unListen()
         })()
     }, [path, scheme, provider])
 
@@ -222,7 +240,7 @@ export function DataTableDemo() {
                         const val = event.target.value
                         setPath(val)
                         if (val.endsWith("/")) {
-                            search(val)
+                            _.debounce(() => search(val), 600)
                         }
                     }
                     }
@@ -268,6 +286,8 @@ export function DataTableDemo() {
                         {table.getRowModel().rows?.length ? (
                             table.getRowModel().rows.map((row) => (
                                 <TableRow
+                                    className="select-none"
+                                    onDoubleClick={() => view(row.original)}
                                     key={row.id}
                                     data-state={row.getIsSelected() && "selected"}
                                 >

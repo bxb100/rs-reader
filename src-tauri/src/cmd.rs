@@ -4,17 +4,17 @@ use std::fs;
 use std::path::Path;
 use std::str::FromStr;
 
-use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
 use log::info;
 use opendal::{EntryMode, Operator};
 use serde::{Deserialize, Serialize};
-use tauri::api::path::app_cache_dir;
 use tauri::{Manager, State, WindowBuilder, WindowUrl};
+use tauri::api::path::app_cache_dir;
 use tokio::fs::File;
 use uuid::Uuid;
 
-use crate::{CacheWrapper, APP};
+use crate::{APP, CacheWrapper};
 
 #[tauri::command]
 pub fn greet(name: &str) -> String {
@@ -22,28 +22,25 @@ pub fn greet(name: &str) -> String {
 }
 
 #[tauri::command]
-pub fn open_reader(pass: String) -> Result<(), String> {
+pub fn open_reader(pass: String, name: String) -> Result<(), String> {
     let handler = APP.get().unwrap();
     let win_len = handler.windows().keys().len();
 
-    let builder = WindowBuilder::new(
+    WindowBuilder::new(
         handler,
         format!("reader-{win_len}"),
         WindowUrl::App("nested/reader.html".into()),
     )
-    .title("Reader")
+    .title(name)
     .additional_browser_args("--disable-web-security")
     .visible(true)
     .resizable(true)
     .focused(true)
     .skip_taskbar(true)
-    // .min_inner_size(820f64, 500f64)
-    .initialization_script(&format!("window.__DATA__ = JSON.parse(`{pass}`)"));
-    
-    #[cfg(target_os = "macos")]
-    builder.hidden_title(true).build().unwrap();
-    #[cfg(not(target_os = "macos"))]
-    builder.build().unwrap();
+    .center()
+    .initialization_script(&format!("window.__DATA__ = JSON.parse(`{pass}`)"))
+    .build()
+    .unwrap();
 
     Ok(())
 }
@@ -210,7 +207,7 @@ pub async fn list_files(
     let root_path = op.info().root().to_string();
 
     // Create the runtime
-    let entries = op.list(&path).await.map_err(|e| format!("{e}"))?;
+    let entries = op.list_with(&path).delimiter("").await.map_err(|e| format!("{e}"))?;
 
     let mut results: Vec<FileEntry> = vec![];
 

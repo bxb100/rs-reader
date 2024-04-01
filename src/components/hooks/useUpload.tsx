@@ -4,6 +4,7 @@ import {open} from "@tauri-apps/api/dialog";
 import {downloadDir} from "@tauri-apps/api/path";
 import {Scheme} from "@/type.ts";
 import {toast} from "@/components/ui/use-toast.ts";
+import {supportFileType} from "@/lib/utils.ts";
 
 export function useUpload() {
     const [taskId, setTaskId] = useState<string | null>(null)
@@ -56,7 +57,7 @@ export function useUpload() {
             multiple: false,
             filters: [{
                 name: 'Books',
-                extensions: ['mobi', 'epub', 'pdf', 'cbz', 'fb2', 'fbz', 'zip', 'mobi']
+                extensions: supportFileType()
             }],
             defaultPath: await downloadDir(),
         }) as string;
@@ -67,7 +68,35 @@ export function useUpload() {
         setTaskId(taskId)
     }, [])
 
+    const uploadFile = useCallback(async (readPath: string, savePath: string, scheme: Scheme, options: Record<string, string>) => {
+        if (taskId) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Please wait for the current task to complete",
+            })
+            return
+        }
+        let exist = false
+        for (let type of supportFileType()) {
+            if (readPath.endsWith(type)) {
+                exist = true
+                break
+            }
+        }
+        if (!exist) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Unsupported file type",
+            })
+            return
+        }
+        const $taskId = await invoke<string>("write_file", {readPath, savePath, scheme, options})
+        setTaskId($taskId)
+    }, [taskId])
+
     return useMemo(() => ({
-        uploadDialog, status
+        uploadDialog, status, uploadFile
     }), [uploadDialog, status])
 }

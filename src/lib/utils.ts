@@ -13,3 +13,7 @@ export function convert(provider: Provider): Record<string, string> {
     })
     return result
 }
+
+export function supportFileType(): string[] {
+    return ['mobi', 'epub', 'pdf', 'cbz', 'fb2', 'fbz', 'zip', 'mobi']
+}
