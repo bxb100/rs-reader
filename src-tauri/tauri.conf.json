@@ -52,7 +52,6 @@
                 "width": 800,
                 "height": 600,
                 "fileDropEnabled": true,
-                "hiddenTitle": true,
                 "center": true,
                 "resizable": false
             }
