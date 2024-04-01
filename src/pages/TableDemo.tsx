@@ -29,7 +29,7 @@ import _ from "lodash";
 import {useToast} from "@/components/ui/use-toast.ts";
 import {checkFile, deleteFile, listFiles, openReader} from "@/components/api/reader.ts";
 import {useUpload} from "@/components/hooks/useUpload.tsx";
-import {ScrollArea} from "@/components/ui/scroll-area.tsx";
+import {ScrollArea, ScrollBar} from "@/components/ui/scroll-area.tsx";
 import {SheetDemo} from "@/pages/SheetPage.tsx";
 import {ModeToggle} from "@/components/mode-toggle.tsx";
 import {appLocalDataDir} from "@tauri-apps/api/path";
@@ -57,7 +57,7 @@ export const columns:
                     <CaretSortIcon className="ml-2 h-4 w-4"/>
                 </Button>
             )
-        }
+        },
     },
     {
         accessorKey: "root",
@@ -164,6 +164,7 @@ export function DataTableDemo() {
             console.log(path, scheme, provider)
             listFiles(scheme, path, convert(provider))
                 .then((files: any) => {
+
                     console.log(files as FileEntry[])
                     setData(files as FileEntry[])
                 })
@@ -231,7 +232,7 @@ export function DataTableDemo() {
     }
 
     return (
-        <div className="w-full">
+        <div className="w-full select-none">
             <div className="flex items-center py-4">
                 <Input
                     placeholder="Load file path"
@@ -261,8 +262,8 @@ export function DataTableDemo() {
                 </Button>
                 <ModeToggle/>
             </div>
-            <ScrollArea className="rounded-md border max-h-[420px]">
-                <Table>
+            <ScrollArea className="rounded-md border h-[424px] w-full">
+                <Table className="border-b">
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>
@@ -281,12 +282,10 @@ export function DataTableDemo() {
                             </TableRow>
                         ))}
                     </TableHeader>
-
                     <TableBody>
                         {table.getRowModel().rows?.length ? (
                             table.getRowModel().rows.map((row) => (
                                 <TableRow
-                                    className="select-none"
                                     onDoubleClick={() => view(row.original)}
                                     key={row.id}
                                     data-state={row.getIsSelected() && "selected"}
@@ -313,6 +312,7 @@ export function DataTableDemo() {
                         )}
                     </TableBody>
                 </Table>
+                <ScrollBar orientation="horizontal" />
             </ScrollArea>
 
         </div>

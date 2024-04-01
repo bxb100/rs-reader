@@ -18,7 +18,7 @@ This project is experimental, and build for learning, so it logic so simple:
 
 ---
 
-<img width="1197" alt="image" src="https://github.com/bxb100/rs-reader/assets/20685961/f0c5d3fe-79fe-4dc3-9cfb-3984a1c10d12">
+<img width="1197" alt="image" src="./doc/img.png">
 
 
 [^1]: https://tauri.app/v1/api/js/path/#applocaldatadir
