@@ -19,7 +19,7 @@ export async function openReader(fileEntry: FileEntry, options?: Record<string, 
         url: convertFileSrc(filePath),
         name: fileEntry.name,
     }
-    await invoke("open_reader", {pass: JSON.stringify(data)})
+    await invoke("open_reader", {pass: JSON.stringify(data), name: fileEntry.name})
 }
 
 export async function checkFile(fileEntry: FileEntry, options?: Record<string, any>) {
