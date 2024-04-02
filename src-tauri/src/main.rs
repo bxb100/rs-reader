@@ -2,7 +2,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use lru::LruCache;
-use once_cell::sync::OnceCell;
 use std::num::NonZeroUsize;
 use std::sync::Mutex;
 use tauri::Manager;
@@ -13,8 +12,6 @@ use crate::config::init_config;
 
 mod cmd;
 mod config;
-
-pub static APP: OnceCell<tauri::AppHandle> = OnceCell::new();
 
 pub struct CacheWrapper(pub Mutex<LruCache<String, i8>>);
 
@@ -28,7 +25,6 @@ fn main() {
         .plugin(tauri_plugin_fs_watch::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .setup(|app| {
-            APP.get_or_init(|| app.handle());
             init_config(app)?;
             app.manage(CacheWrapper(Mutex::new(LruCache::new(
                 NonZeroUsize::new(5).unwrap(),

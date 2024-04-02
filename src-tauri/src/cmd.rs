@@ -14,30 +14,32 @@ use tauri::api::path::app_cache_dir;
 use tokio::fs::File;
 use uuid::Uuid;
 
-use crate::{APP, CacheWrapper};
+use crate::CacheWrapper;
 
 #[tauri::command]
 pub fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+/// using `async` because https://tauri.app/v1/guides/features/multiwindow/
 #[tauri::command]
-pub fn open_reader(pass: String, name: String) -> Result<(), String> {
-    let handler = APP.get().unwrap();
-    let win_len = handler.windows().keys().len();
+pub async fn open_reader(app: tauri::AppHandle, pass: String, name: String) -> Result<(), String> {
+    let win_len = app.windows().keys().len();
 
     WindowBuilder::new(
-        handler,
+        &app,
         format!("reader-{win_len}"),
         WindowUrl::App("nested/reader.html".into()),
     )
     .title(name)
-    .additional_browser_args("--disable-web-security")
+    // if using `additional_browser_args` will cause the window webview2 denial execute
+    // .additional_browser_args("--disable-web-security")
     .visible(true)
     .resizable(true)
     .focused(true)
     .skip_taskbar(true)
     .center()
+    .inner_size(800.0, 600.0)
     .initialization_script(&format!("window.__DATA__ = JSON.parse(`{pass}`)"))
     .build()
     .unwrap();
@@ -77,11 +79,12 @@ pub async fn reade_file(
 
 #[tauri::command]
 pub async fn download_file(
+    app: tauri::AppHandle,
     scheme: String,
     path: String,
     options: Option<HashMap<String, String>>,
 ) -> Result<String, String> {
-    let mut cache_dir = app_cache_dir(&APP.get().unwrap().config()).unwrap();
+    let mut cache_dir = app_cache_dir(&app.config()).unwrap();
     cache_dir = cache_dir.join("rs-reader").join(path.clone());
     // check file is existed
     if cache_dir.exists() {
@@ -123,6 +126,7 @@ pub fn get_status(id: String, cache: State<CacheWrapper>) -> i8 {
 
 #[tauri::command]
 pub async fn write_file(
+    app: tauri::AppHandle,
     read_path: String,
     save_path: String,
     scheme: String,
@@ -147,19 +151,9 @@ pub async fn write_file(
 
         let operator = init_operator(scheme.clone(), options).unwrap();
 
-        let default_fs_separate = "/";
-        #[cfg(target_os = "windows")]
-        let default_fs_separate = "\\";
-
-        let separate = if matches!(scheme.as_str(), "fs") {
-            default_fs_separate
-        } else {
-            "/"
-        };
         let save_path = format!(
-            "{}{}{}",
+            "{}/{}",
             save_path,
-            separate,
             local_file_path.file_name().unwrap().to_str().unwrap()
         );
         let local_save_path = Path::new(&save_path);
@@ -179,7 +173,7 @@ pub async fn write_file(
         let result = tokio::io::copy_buf(&mut reader, &mut result).await;
         {
             info!("write_file: result: {:?}", result);
-            let cache = APP.get().unwrap().state::<CacheWrapper>();
+            let cache = app.state::<CacheWrapper>();
             let mut cache = cache.0.lock().unwrap();
             cache.put(id, result.map_or(-1, |_| 1));
         }
@@ -207,7 +201,11 @@ pub async fn list_files(
     let root_path = op.info().root().to_string();
 
     // Create the runtime
-    let entries = op.list_with(&path).delimiter("").await.map_err(|e| format!("{e}"))?;
+    let entries = op
+        .list_with(&path)
+        .recursive(true)
+        .await
+        .map_err(|e| format!("{e}"))?;
 
     let mut results: Vec<FileEntry> = vec![];
 
@@ -237,6 +235,7 @@ pub async fn list_files(
 
 #[tauri::command]
 pub async fn delete_file(
+    app: tauri::AppHandle,
     path: String,
     scheme: String,
     options: Option<HashMap<String, String>>,
@@ -249,7 +248,7 @@ pub async fn delete_file(
     if scheme != "fs" {
         let path = path.clone();
         tokio::spawn(async move {
-            let mut cache_dir = app_cache_dir(&APP.get().unwrap().config()).unwrap();
+            let mut cache_dir = app_cache_dir(&app.config()).unwrap();
             cache_dir = cache_dir.join("rs-reader").join(path);
             fs::remove_file(cache_dir)
                 .map_err(|e| e.to_string())
