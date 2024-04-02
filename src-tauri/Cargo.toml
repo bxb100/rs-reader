@@ -23,7 +23,7 @@ once_cell = "1.19.0"
 opendal = "0.45.1"
 uuid = { version = "1.8.0", features = ["v4"] }
 lru = "0"
-log = "^0.4"
+log = "^0.4.21"
 tokio = { version = "1.37", features = ["fs"] }
 
 [features]
